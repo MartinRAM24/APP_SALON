@@ -65,7 +65,8 @@ class AppointmentCreate(BaseModel):
 
 
 class AppointmentAdminCreate(AppointmentCreate):
-    usuario_id: UUID
+    usuario_id: UUID | None = None
+    cliente_nombre: str | None = Field(default=None, min_length=2, max_length=150)
 
 
 class AppointmentUpdate(BaseModel):

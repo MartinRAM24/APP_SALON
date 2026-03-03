@@ -43,7 +43,7 @@ async function loadClients(query = '') {
 }
 
 async function loadAdminServices() {
-  const res = await fetch('/api/admin/servicios', { headers });
+  const res = await fetch('/api/cliente/servicios', { headers });
   const data = await res.json();
   if (!res.ok) {
     document.getElementById('adminMsg').textContent = getErrorMessage(data, 'No se pudieron cargar servicios.');
@@ -100,14 +100,23 @@ document.getElementById('manualForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const selectedClientId = document.getElementById('clientSelect').value;
-  if (!selectedClientId) {
-    document.getElementById('adminMsg').textContent = 'Selecciona un cliente de la lista de coincidencias.';
+  const clientSearchValue = document.getElementById('clientSearch').value.trim();
+  const selectedServiceId = Number(document.getElementById('servicioId').value);
+
+  if (!selectedServiceId) {
+    document.getElementById('adminMsg').textContent = 'Selecciona un servicio para crear la cita.';
+    return;
+  }
+
+  if (!selectedClientId && !clientSearchValue) {
+    document.getElementById('adminMsg').textContent = 'Ingresa el nombre del cliente o selecciona una coincidencia.';
     return;
   }
 
   const payload = {
-    usuario_id: selectedClientId,
-    servicio_id: Number(document.getElementById('servicioId').value),
+    usuario_id: selectedClientId || null,
+    cliente_nombre: selectedClientId ? null : clientSearchValue,
+    servicio_id: selectedServiceId,
     fecha: document.getElementById('manualFecha').value,
     hora: document.getElementById('manualHora').value,
   };

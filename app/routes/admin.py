@@ -82,9 +82,32 @@ def create_manual_appointment(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    user = db.query(User).filter(User.id == payload.usuario_id).first()
+    user = None
+    if payload.usuario_id:
+        user = db.query(User).filter(User.id == payload.usuario_id, User.rol == "cliente").first()
+    elif payload.cliente_nombre:
+        matches = (
+            db.query(User)
+            .filter(User.rol == "cliente", User.nombre.ilike(payload.cliente_nombre.strip()))
+            .order_by(User.created_at.asc())
+            .all()
+        )
+        if len(matches) == 1:
+            user = matches[0]
+        elif len(matches) > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Hay varios clientes con ese nombre. Selecciona uno de la lista.",
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="No existe un cliente registrado con ese nombre.",
+            )
+
     if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+        raise HTTPException(status_code=400, detail="Debes seleccionar un cliente o escribir un nombre válido.")
+
     service = db.query(Service).filter(Service.id == payload.servicio_id).first()
     if not service:
         raise HTTPException(status_code=404, detail="Servicio no encontrado.")
@@ -92,7 +115,7 @@ def create_manual_appointment(
     validate_appointment_slot(db, payload.fecha, payload.hora)
 
     appointment = Appointment(
-        usuario_id=payload.usuario_id,
+        usuario_id=user.id,
         servicio_id=payload.servicio_id,
         fecha=payload.fecha,
         hora=payload.hora,
