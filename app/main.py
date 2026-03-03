@@ -27,6 +27,19 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+
+def resolve_logo_src() -> str:
+    """Resolve logo source from env or local static files."""
+    logo_url = os.getenv("LOGO_URL", "").strip()
+    if logo_url:
+        return logo_url
+
+    if os.path.exists("static/logo.png"):
+        return "/static/logo.png"
+
+    return "/static/logo.svg"
+
+
 app.include_router(auth.router)
 app.include_router(cliente.router)
 app.include_router(admin.router)
@@ -72,14 +85,14 @@ def startup():
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse("home.html", {"request": request, "logo_src": resolve_logo_src()})
 
 
 @app.get("/cliente", response_class=HTMLResponse)
 def cliente_panel(request: Request):
-    return templates.TemplateResponse("cliente.html", {"request": request})
+    return templates.TemplateResponse("cliente.html", {"request": request, "logo_src": resolve_logo_src()})
 
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
-    return templates.TemplateResponse("admin.html", {"request": request})
+    return templates.TemplateResponse("admin.html", {"request": request, "logo_src": resolve_logo_src()})
