@@ -59,7 +59,7 @@ def validate_appointment_slot(db: Session, fecha: date, hora, exclude_id: int | 
 
 @router.get("/citas", response_model=list[AppointmentOut])
 def list_all_appointments(db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    appointments = db.query(Appointment).join(Service).join(User).order_by(Appointment.fecha.asc(), Appointment.hora.asc()).all()
+    appointments = db.query(Appointment).join(Service).join(User).filter(Appointment.estado != "cancelada").order_by(Appointment.fecha.asc(), Appointment.hora.asc()).all()
     return [
         AppointmentOut(
             id=item.id,

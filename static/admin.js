@@ -7,29 +7,17 @@ let matchedClients = [];
 function getErrorMessage(data, fallback = 'Error') {
   if (!data) return fallback;
   if (typeof data.detail === 'string') return data.detail;
-  if (Array.isArray(data.detail)) {
-    return data.detail.map((item) => item.msg || JSON.stringify(item)).join(' | ');
-  }
+  if (Array.isArray(data.detail)) return data.detail.map((item) => item.msg || JSON.stringify(item)).join(' | ');
   if (typeof data.detail === 'object') return JSON.stringify(data.detail);
   return fallback;
 }
 
 function renderClientMatches(clients) {
   matchedClients = clients;
-
   const datalist = document.getElementById('clientMatches');
   datalist.innerHTML = clients
     .map((c) => `<option value="${c.nombre}">${c.nombre} · ${c.telefono} · ${c.email}</option>`)
     .join('');
-
-  const clientSelect = document.getElementById('clientSelect');
-  clientSelect.innerHTML = '<option value="">Selecciona una coincidencia</option>' + clients
-    .map((c) => `<option value="${c.id}">${c.nombre} · ${c.telefono} · ${c.email}</option>`)
-    .join('');
-
-  const searchValue = document.getElementById('clientSearch').value.trim().toLowerCase();
-  const exact = clients.find((c) => c.nombre.toLowerCase() === searchValue || c.email.toLowerCase() === searchValue || c.telefono.toLowerCase() === searchValue);
-  if (exact) clientSelect.value = exact.id;
 }
 
 async function loadClients(query = '') {
@@ -43,7 +31,8 @@ async function loadClients(query = '') {
 }
 
 async function loadAdminServices() {
-  const res = await fetch('/api/cliente/servicios', { headers });
+  // Misma fuente que usa el panel de la dueña para gestionar servicios
+  const res = await fetch('/api/admin/servicios', { headers });
   const data = await res.json();
   if (!res.ok) {
     document.getElementById('adminMsg').textContent = getErrorMessage(data, 'No se pudieron cargar servicios.');
@@ -83,7 +72,7 @@ async function loadAdminSummary() {
 
 window.cancelAppointment = async (id) => {
   await fetch(`/api/admin/citas/${id}`, { method: 'DELETE', headers });
-  loadAdminAppointments();
+  loadAdminAppointments(); // backend ya excluye canceladas
   loadAdminSummary();
 };
 
@@ -99,7 +88,6 @@ document.getElementById('clientSearch')?.addEventListener('input', async (e) => 
 document.getElementById('manualForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const selectedClientId = document.getElementById('clientSelect').value;
   const clientSearchValue = document.getElementById('clientSearch').value.trim();
   const selectedServiceId = Number(document.getElementById('servicioId').value);
 
@@ -108,14 +96,20 @@ document.getElementById('manualForm')?.addEventListener('submit', async (e) => {
     return;
   }
 
-  if (!selectedClientId && !clientSearchValue) {
-    document.getElementById('adminMsg').textContent = 'Ingresa el nombre del cliente o selecciona una coincidencia.';
+  if (!clientSearchValue) {
+    document.getElementById('adminMsg').textContent = 'Ingresa el nombre del cliente.';
     return;
   }
 
+  const exactMatch = matchedClients.find((c) => (
+    c.nombre.toLowerCase() === clientSearchValue.toLowerCase()
+    || c.email.toLowerCase() === clientSearchValue.toLowerCase()
+    || c.telefono.toLowerCase() === clientSearchValue.toLowerCase()
+  ));
+
   const payload = {
-    usuario_id: selectedClientId || null,
-    cliente_nombre: selectedClientId ? null : clientSearchValue,
+    usuario_id: exactMatch ? exactMatch.id : null,
+    cliente_nombre: exactMatch ? null : clientSearchValue,
     servicio_id: selectedServiceId,
     fecha: document.getElementById('manualFecha').value,
     hora: document.getElementById('manualHora').value,
