@@ -31,18 +31,28 @@ async function loadClients(query = '') {
 }
 
 async function loadAdminServices() {
-  // Misma fuente que usa el panel de la dueña para gestionar servicios
-  const res = await fetch('/api/admin/servicios', { headers });
-  const data = await res.json();
-  if (!res.ok) {
-    document.getElementById('adminMsg').textContent = getErrorMessage(data, 'No se pudieron cargar servicios.');
-    return;
+  // Intenta con endpoint admin y si falla usa endpoint cliente como respaldo.
+  let data = [];
+  let lastError = null;
+
+  for (const url of ['/api/admin/servicios', '/api/cliente/servicios']) {
+    const res = await fetch(url, { headers });
+    const body = await res.json();
+    if (res.ok) {
+      data = body;
+      break;
+    }
+    lastError = body;
   }
 
   const select = document.getElementById('servicioId');
   select.innerHTML = '<option value="">Selecciona un servicio</option>' + data
     .map((s) => `<option value="${s.id}">${s.nombre} (${s.duracion_minutos} min) - $${s.precio}</option>`)
     .join('');
+
+  if (!data.length) {
+    document.getElementById('adminMsg').textContent = getErrorMessage(lastError, 'No se pudieron cargar servicios.');
+  }
 }
 
 async function loadAdminAppointments() {
