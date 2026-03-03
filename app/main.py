@@ -45,15 +45,18 @@ def startup():
         if admin_email and admin_phone and admin_password:
             exists = db.query(User).filter(User.email == admin_email).first()
             if not exists:
-                db.add(
-                    User(
-                        nombre=admin_name,
-                        telefono=admin_phone,
-                        email=admin_email,
-                        password_hash=hash_password(admin_password),
-                        rol="admin",
+                if len(admin_password.encode("utf-8")) <= 72:
+                    db.add(
+                        User(
+                            nombre=admin_name,
+                            telefono=admin_phone,
+                            email=admin_email,
+                            password_hash=hash_password(admin_password),
+                            rol="admin",
+                        )
                     )
-                )
+                else:
+                    print("[startup] ADMIN_PASSWORD excede 72 bytes y no se creó usuario admin automático.")
         if not db.query(Service).first():
             db.add_all(
                 [

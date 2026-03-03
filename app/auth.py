@@ -22,11 +22,21 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
+def _validate_bcrypt_input(password: str) -> None:
+    # bcrypt only supports up to 72 bytes and passlib may raise ValueError at runtime.
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña es demasiado larga para bcrypt (máximo 72 bytes).",
+        )
+
 def hash_password(password: str) -> str:
+    _validate_bcrypt_input(password)
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    _validate_bcrypt_input(plain_password)
     return pwd_context.verify(plain_password, hashed_password)
 
 
