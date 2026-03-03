@@ -23,8 +23,22 @@
       <article class="bg-white rounded-xl p-4 shadow">
         <h3 class="font-semibold">Crear cita manual</h3>
         <form id="manualForm" class="space-y-2 mt-2 text-sm">
-          <input id="usuarioId" placeholder="UUID Usuario" class="w-full border rounded p-2" required>
-          <input id="servicioId" placeholder="ID Servicio" type="number" class="w-full border rounded p-2" required>
+          <label class="block">
+            <span class="text-slate-700">Cliente</span>
+            <input id="clientSearch" list="clientMatches" placeholder="Escribe nombre, email o teléfono" class="w-full border rounded p-2" required>
+          </label>
+          <datalist id="clientMatches"></datalist>
+          <select id="clientSelect" class="w-full border rounded p-2" required>
+            <option value="">Selecciona una coincidencia</option>
+          </select>
+
+          <label class="block">
+            <span class="text-slate-700">Servicio</span>
+            <select id="servicioId" class="w-full border rounded p-2" required>
+              <option value="">Selecciona un servicio</option>
+            </select>
+          </label>
+
           <input id="manualFecha" type="date" class="w-full border rounded p-2" required>
           <input id="manualHora" type="time" class="w-full border rounded p-2" required>
           <button class="bg-purple-700 text-white px-3 py-2 rounded w-full">Crear cita</button>

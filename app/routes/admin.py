@@ -3,7 +3,7 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.auth import require_admin
@@ -16,9 +16,30 @@ from app.schemas import (
     ServiceCreate,
     ServiceOut,
     ServiceUpdate,
+    AdminClientMatch,
 )
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+@router.get("/clientes", response_model=list[AdminClientMatch])
+def search_clients(
+    query: str = "",
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    base_query = db.query(User).filter(User.rol == "cliente")
+
+    if query.strip():
+        like_query = f"%{query.strip()}%"
+        base_query = base_query.filter(
+            or_(
+                User.nombre.ilike(like_query),
+                User.email.ilike(like_query),
+                User.telefono.ilike(like_query),
+            )
+        )
+
+    return base_query.order_by(User.nombre.asc()).limit(20).all()
 
 
 def validate_appointment_slot(db: Session, fecha: date, hora, exclude_id: int | None = None):

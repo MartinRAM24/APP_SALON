@@ -87,3 +87,10 @@ class AppointmentOut(BaseModel):
     hora: time
     estado: str
     created_at: datetime
+
+
+class AdminClientMatch(BaseModel):
+    id: UUID
+    nombre: str
+    telefono: str
+    email: EmailStr

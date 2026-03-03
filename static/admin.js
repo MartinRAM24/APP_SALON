@@ -2,17 +2,70 @@ const token = localStorage.getItem('token');
 if (!token) window.location.href = '/';
 
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+let matchedClients = [];
+
+function getErrorMessage(data, fallback = 'Error') {
+  if (!data) return fallback;
+  if (typeof data.detail === 'string') return data.detail;
+  if (Array.isArray(data.detail)) {
+    return data.detail.map((item) => item.msg || JSON.stringify(item)).join(' | ');
+  }
+  if (typeof data.detail === 'object') return JSON.stringify(data.detail);
+  return fallback;
+}
+
+function renderClientMatches(clients) {
+  matchedClients = clients;
+
+  const datalist = document.getElementById('clientMatches');
+  datalist.innerHTML = clients
+    .map((c) => `<option value="${c.nombre}">${c.nombre} · ${c.telefono} · ${c.email}</option>`)
+    .join('');
+
+  const clientSelect = document.getElementById('clientSelect');
+  clientSelect.innerHTML = '<option value="">Selecciona una coincidencia</option>' + clients
+    .map((c) => `<option value="${c.id}">${c.nombre} · ${c.telefono} · ${c.email}</option>`)
+    .join('');
+
+  const searchValue = document.getElementById('clientSearch').value.trim().toLowerCase();
+  const exact = clients.find((c) => c.nombre.toLowerCase() === searchValue || c.email.toLowerCase() === searchValue || c.telefono.toLowerCase() === searchValue);
+  if (exact) clientSelect.value = exact.id;
+}
+
+async function loadClients(query = '') {
+  const res = await fetch(`/api/admin/clientes?query=${encodeURIComponent(query)}`, { headers });
+  const data = await res.json();
+  if (!res.ok) {
+    document.getElementById('adminMsg').textContent = getErrorMessage(data, 'No se pudieron cargar clientes.');
+    return;
+  }
+  renderClientMatches(data);
+}
+
+async function loadAdminServices() {
+  const res = await fetch('/api/admin/servicios', { headers });
+  const data = await res.json();
+  if (!res.ok) {
+    document.getElementById('adminMsg').textContent = getErrorMessage(data, 'No se pudieron cargar servicios.');
+    return;
+  }
+
+  const select = document.getElementById('servicioId');
+  select.innerHTML = '<option value="">Selecciona un servicio</option>' + data
+    .map((s) => `<option value="${s.id}">${s.nombre} (${s.duracion_minutos} min) - $${s.precio}</option>`)
+    .join('');
+}
 
 async function loadAdminAppointments() {
   const res = await fetch('/api/admin/citas', { headers });
   const data = await res.json();
   if (!res.ok) {
-    document.getElementById('adminMsg').textContent = data.detail || 'Sin permisos';
+    document.getElementById('adminMsg').textContent = getErrorMessage(data, 'Sin permisos');
     return;
   }
   const tbody = document.getElementById('adminAppointments');
-  tbody.innerHTML = data.map(c => `<tr class="border-b">
-    <td>${c.id}</td><td>${c.usuario_nombre}</td><td>${c.servicio_nombre}</td><td>${c.fecha}</td><td>${c.hora.slice(0,5)}</td><td>${c.estado}</td>
+  tbody.innerHTML = data.map((c) => `<tr class="border-b">
+    <td>${c.id}</td><td>${c.usuario_nombre}</td><td>${c.servicio_nombre}</td><td>${c.fecha}</td><td>${c.hora.slice(0, 5)}</td><td>${c.estado}</td>
     <td class="space-x-2"><button onclick="cancelAppointment(${c.id})" class="bg-rose-500 text-white px-2 py-1 rounded">Cancelar</button></td>
   </tr>`).join('');
 }
@@ -34,17 +87,38 @@ window.cancelAppointment = async (id) => {
   loadAdminSummary();
 };
 
+document.getElementById('clientSearch')?.addEventListener('input', async (e) => {
+  const value = e.target.value.trim();
+  if (value.length < 2) {
+    await loadClients('');
+    return;
+  }
+  await loadClients(value);
+});
+
 document.getElementById('manualForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  const selectedClientId = document.getElementById('clientSelect').value;
+  if (!selectedClientId) {
+    document.getElementById('adminMsg').textContent = 'Selecciona un cliente de la lista de coincidencias.';
+    return;
+  }
+
   const payload = {
-    usuario_id: document.getElementById('usuarioId').value,
+    usuario_id: selectedClientId,
     servicio_id: Number(document.getElementById('servicioId').value),
     fecha: document.getElementById('manualFecha').value,
     hora: document.getElementById('manualHora').value,
   };
+
   const res = await fetch('/api/admin/citas', { method: 'POST', headers, body: JSON.stringify(payload) });
   const data = await res.json();
-  document.getElementById('adminMsg').textContent = res.ok ? 'Cita creada' : (data.detail || 'Error');
+  document.getElementById('adminMsg').textContent = res.ok ? 'Cita creada' : getErrorMessage(data, 'Error al crear cita');
+  if (res.ok) {
+    document.getElementById('manualForm').reset();
+    await loadClients('');
+  }
   loadAdminAppointments();
   loadAdminSummary();
 });
@@ -58,7 +132,8 @@ document.getElementById('serviceForm')?.addEventListener('submit', async (e) => 
   };
   const res = await fetch('/api/admin/servicios', { method: 'POST', headers, body: JSON.stringify(payload) });
   const data = await res.json();
-  document.getElementById('adminMsg').textContent = res.ok ? `Servicio creado (ID ${data.id})` : (data.detail || 'Error');
+  document.getElementById('adminMsg').textContent = res.ok ? `Servicio creado (ID ${data.id})` : getErrorMessage(data, 'Error');
+  if (res.ok) loadAdminServices();
 });
 
 document.getElementById('editServiceForm')?.addEventListener('submit', async (e) => {
@@ -71,7 +146,8 @@ document.getElementById('editServiceForm')?.addEventListener('submit', async (e)
 
   const res = await fetch(`/api/admin/servicios/${id}`, { method: 'PATCH', headers, body: JSON.stringify(payload) });
   const data = await res.json();
-  document.getElementById('adminMsg').textContent = res.ok ? `Servicio ${data.nombre} actualizado` : (data.detail || 'Error');
+  document.getElementById('adminMsg').textContent = res.ok ? `Servicio ${data.nombre} actualizado` : getErrorMessage(data, 'Error');
+  if (res.ok) loadAdminServices();
 });
 
 document.getElementById('logoutAdmin')?.addEventListener('click', () => {
@@ -80,5 +156,7 @@ document.getElementById('logoutAdmin')?.addEventListener('click', () => {
   window.location.href = '/';
 });
 
+loadAdminServices();
+loadClients('');
 loadAdminAppointments();
 loadAdminSummary();
