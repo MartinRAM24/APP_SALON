@@ -37,4 +37,4 @@ def login(data: LoginData, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Credenciales inválidas.")
     token = create_access_token(str(user.id), user.rol)
-    return Token(access_token=token)
+    return Token(access_token=token, rol=user.rol)

@@ -30,6 +30,7 @@ loginForm?.addEventListener('submit', async (e) => {
     return;
   }
   localStorage.setItem('token', data.access_token);
-  msg.textContent = 'Login correcto.';
-  window.location.href = '/cliente';
+  localStorage.setItem('rol', data.rol);
+  msg.textContent = data.rol === 'admin' ? 'Login admin correcto. Redirigiendo al panel...' : 'Login correcto.';
+  window.location.href = data.rol === 'admin' ? '/admin' : '/cliente';
 });

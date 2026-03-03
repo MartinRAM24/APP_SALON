@@ -52,6 +52,7 @@ document.getElementById('appointmentForm')?.addEventListener('submit', async (e)
 
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
   localStorage.removeItem('token');
+  localStorage.removeItem('rol');
   window.location.href = '/';
 });
 

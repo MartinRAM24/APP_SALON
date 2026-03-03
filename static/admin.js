@@ -76,6 +76,7 @@ document.getElementById('editServiceForm')?.addEventListener('submit', async (e)
 
 document.getElementById('logoutAdmin')?.addEventListener('click', () => {
   localStorage.removeItem('token');
+  localStorage.removeItem('rol');
   window.location.href = '/';
 });
 
