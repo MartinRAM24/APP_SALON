@@ -1,0 +1,10 @@
+# Python cache/bytecode
+__pycache__/
+*.py[cod]
+
+# Local env
+.venv/
+.env
+
+# Binary asset excluded from PR cleanup
+static/logo.png

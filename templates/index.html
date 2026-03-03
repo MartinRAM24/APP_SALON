@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salon Belleza</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 text-slate-800">
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <img src="/static/logo.png" alt="Logo del salón" class="mx-auto w-28 h-28 rounded-full shadow-lg ring-4 ring-white/60" />
+      <h1 class="text-4xl font-bold mt-4 text-purple-700">Salon Elegance</h1>
+      <p class="mt-2 text-slate-600">Agenda tus citas con una experiencia moderna y encantadora.</p>
+    </div>
+
+    <section class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-xl transition hover:scale-[1.01]">
+        <h2 class="text-xl font-semibold mb-4">Registro</h2>
+        <form id="registerForm" class="space-y-3">
+          <input class="w-full border rounded-lg p-2" name="nombre" placeholder="Nombre" required />
+          <input class="w-full border rounded-lg p-2" name="telefono" placeholder="Teléfono" required />
+          <input class="w-full border rounded-lg p-2" name="email" type="email" placeholder="Email" required />
+          <input class="w-full border rounded-lg p-2" name="password" type="password" placeholder="Contraseña" required />
+          <button class="w-full bg-purple-600 text-white rounded-lg py-2 hover:bg-purple-700">Crear cuenta</button>
+        </form>
+      </div>
+
+      <div class="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-xl transition hover:scale-[1.01]">
+        <h2 class="text-xl font-semibold mb-4">Iniciar sesión</h2>
+        <form id="loginForm" class="space-y-3">
+          <input class="w-full border rounded-lg p-2" name="login" placeholder="Email o teléfono" required />
+          <input class="w-full border rounded-lg p-2" name="password" type="password" placeholder="Contraseña" required />
+          <button class="w-full bg-pink-500 text-white rounded-lg py-2 hover:bg-pink-600">Ingresar</button>
+        </form>
+      </div>
+    </section>
+
+    <p id="message" class="mt-6 text-center font-medium"></p>
+  </main>
+
+  <script>
+    const message = document.getElementById('message');
+
+    async function sendJson(url, payload) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Error inesperado');
+      return data;
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      try {
+        await sendJson('/api/auth/register', Object.fromEntries(form.entries()));
+        message.textContent = 'Registro exitoso. Ahora inicia sesión.';
+        message.className = 'mt-6 text-center font-medium text-emerald-700';
+        e.target.reset();
+      } catch (err) {
+        message.textContent = err.message;
+        message.className = 'mt-6 text-center font-medium text-rose-700';
+      }
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      try {
+        const data = await sendJson('/api/auth/token', Object.fromEntries(form.entries()));
+        localStorage.setItem('token', data.access_token);
+        window.location.href = '/panel';
+      } catch (err) {
+        message.textContent = err.message;
+        message.className = 'mt-6 text-center font-medium text-rose-700';
+      }
+    });
+  </script>
+</body>
+</html>

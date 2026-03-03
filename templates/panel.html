@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 text-slate-800">
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <header class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-purple-700">Panel {{ 'Admin' if is_admin else 'Cliente' }}</h1>
+      <button onclick="logout()" class="bg-slate-700 text-white px-4 py-2 rounded-lg">Salir</button>
+    </header>
+
+    <section id="notif" class="bg-white rounded-2xl p-4 shadow mb-4"></section>
+    <section id="counter" class="bg-white rounded-2xl p-4 shadow mb-4"></section>
+
+    {% if not is_admin %}
+    <section class="bg-white rounded-2xl p-6 shadow mb-6">
+      <h2 class="text-xl font-semibold mb-3">Agendar nueva cita</h2>
+      <form id="createForm" class="grid md:grid-cols-3 gap-3 items-end">
+        <select class="border rounded-lg p-2" name="servicio_id" required>
+          <option value="">Servicio</option>
+          {% for servicio in servicios %}
+          <option value="{{servicio.id}}">{{servicio.nombre}} - ${{servicio.precio}}</option>
+          {% endfor %}
+        </select>
+        <input class="border rounded-lg p-2" type="date" name="fecha" required />
+        <input class="border rounded-lg p-2" type="time" name="hora" required />
+        <button class="bg-purple-600 text-white px-4 py-2 rounded-lg md:col-span-3">Agendar</button>
+      </form>
+    </section>
+    {% endif %}
+
+    <section class="bg-white rounded-2xl p-6 shadow">
+      <h2 class="text-xl font-semibold mb-3">Listado de citas</h2>
+      <div id="list" class="space-y-2"></div>
+      <div id="pagination" class="mt-4 flex gap-2"></div>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = '/';
+    const isAdmin = {{ 'true' if is_admin else 'false' }};
+    let page = 1;
+
+    const colors = {agendada:'bg-blue-100 text-blue-700',cancelada:'bg-rose-100 text-rose-700',completada:'bg-emerald-100 text-emerald-700'};
+
+    async function api(url, options={}) {
+      const res = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } });
+      if (res.status === 401) return logout();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Error');
+      return data;
+    }
+
+    function render(data) {
+      const n = document.getElementById('notif');
+      if (data.proxima_cita) {
+        n.innerHTML = `<p class='font-semibold text-purple-700'>Próxima cita: ${data.proxima_cita.fecha} ${data.proxima_cita.hora} · ${data.proxima_cita.servicio_nombre} (${data.proxima_cita.usuario_nombre})</p>`;
+      } else {
+        n.innerHTML = `<p class='font-semibold text-slate-600'>No hay citas próximas.</p>`;
+      }
+      document.getElementById('counter').innerHTML = `<p class='font-medium'>Citas del día: <span class='text-pink-600 font-bold'>${data.citas_hoy}</span></p>`;
+
+      const citas = data.citas || data.historial;
+      document.getElementById('list').innerHTML = citas.map(c => `
+        <article class='border rounded-xl p-3 flex justify-between items-center'>
+          <div><p class='font-medium'>${c.fecha} ${c.hora} · ${c.servicio_nombre}</p><p class='text-sm text-slate-500'>Cliente: ${c.usuario_nombre}</p></div>
+          <span class='px-2 py-1 rounded-full text-xs ${colors[c.estado]}'>${c.estado}</span>
+        </article>`).join('') || '<p>Sin citas.</p>';
+
+      if (isAdmin) {
+        const totalPages = Math.ceil(data.total / data.per_page);
+        document.getElementById('pagination').innerHTML = `
+          <button ${page <= 1 ? 'disabled' : ''} onclick='changePage(-1)' class='px-3 py-1 rounded bg-slate-200'>Anterior</button>
+          <span class='px-2'>Página ${data.page} de ${totalPages || 1}</span>
+          <button ${page >= totalPages ? 'disabled' : ''} onclick='changePage(1)' class='px-3 py-1 rounded bg-slate-200'>Siguiente</button>`;
+      }
+    }
+
+    async function load() {
+      const endpoint = isAdmin ? `/api/admin/dashboard?page=${page}&per_page=8` : '/api/cliente/dashboard';
+      const data = await api(endpoint);
+      render(data);
+    }
+
+    async function createCita(e) {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      await api('/api/cliente/citas', { method:'POST', body: JSON.stringify(Object.fromEntries(f.entries()))});
+      e.target.reset();
+      await load();
+    }
+
+    function changePage(delta){ page += delta; load(); }
+    function logout(){ localStorage.removeItem('token'); window.location.href='/'; }
+
+    if (!isAdmin) document.getElementById('createForm').addEventListener('submit', createCita);
+    load().catch(err => alert(err.message));
+  </script>
+</body>
+</html>
